@@ -36,6 +36,9 @@
 
     <!-- Prosecutor Tab -->
     <div id="tab-prosecutor" class="tab-content active">
+        <div class="chart-box" id="release-donut-wrap">
+            <canvas id="chart-release-donut"></canvas>
+        </div>
         <div class="card-grid" id="prosecutor-cards"></div>
 
         <!-- Detail panel -->
@@ -45,8 +48,13 @@
                 <button class="back-btn" id="prosecutor-back">&larr; All Prosecutors</button>
             </div>
             <div class="detail-stats" id="prosecutor-detail-stats"></div>
-            <div class="chart-box">
-                <canvas id="chart-rearrest-by-crime"></canvas>
+            <div class="detail-charts">
+                <div class="chart-box">
+                    <canvas id="chart-detail-donut"></canvas>
+                </div>
+                <div class="chart-box">
+                    <canvas id="chart-rearrest-by-crime"></canvas>
+                </div>
             </div>
             <p class="note" id="rearrest-note"></p>
         </div>

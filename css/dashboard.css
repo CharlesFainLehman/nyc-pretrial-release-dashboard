@@ -406,6 +406,17 @@ header h1 {
     margin-top: 0.15rem;
 }
 
+.detail-charts {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .detail-charts { grid-template-columns: 1fr; }
+}
+
 /* === Chart Box === */
 .chart-box {
     background: var(--surface);

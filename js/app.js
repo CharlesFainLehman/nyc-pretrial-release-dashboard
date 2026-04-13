@@ -69,9 +69,15 @@ const App = {
 
     update() {
         this.renderHero();
+        this.renderReleaseDonut();
         this.renderProsecutorCards();
         if (this.selectedCountyIdx !== null) this.renderDetail();
         if (this.activeTab === 'judge' && this.judgeLoaded) this.renderJudgeCards();
+    },
+
+    renderReleaseDonut() {
+        const totals = DataStore.getCountyTotals(Filters.getFilters());
+        Charts.renderReleaseSummary('chart-release-donut', totals);
     },
 
     // ─── Hero ───
@@ -280,6 +286,9 @@ const App = {
                 <div class="ds-lbl">Violent Felony</div>
             </div>
         `;
+
+        // Release donut for this prosecutor
+        Charts.renderReleaseSummary('chart-detail-donut', t);
 
         // Chart: rearrest by crime (serious offenses only)
         const crimeData = this.getCrimeDataFromRows(allRows).filter(d => SERIOUS_CRIMES.has(d.name));
