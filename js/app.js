@@ -266,17 +266,20 @@ const App = {
         }
 
         // Compute totals from filtered rows
-        const t = { total: 0, release: [0,0,0,0,0,0], rearrest: [0,0,0,0,0] };
+        const t = { total: 0, release: [0,0,0,0,0,0], rearrest: [0,0,0,0,0], fta: [0,0] };
         for (const r of allRows) {
             t.total += r[C.TOTAL];
             for (let i = 0; i < 6; i++) t.release[i] += r[C.ROR + i];
             for (let i = 0; i < 5; i++) t.rearrest[i] += r[C.RA_NONE + i];
+            t.fta[0] += r[C.FTA_NO] || 0;
+            t.fta[1] += r[C.FTA_YES] || 0;
         }
         const ra = t.rearrest;
         const raKnown = ra[0] + ra[1] + ra[2] + ra[3];
         const rearrestCount = ra[1] + ra[2] + ra[3];
         const felonyCount = ra[2] + ra[3];
         const released = t.release[0] + t.release[2] + t.release[3];
+        const ftaNo = t.fta[0], ftaYes = t.fta[1], ftaKnown = ftaNo + ftaYes;
 
         document.getElementById('prosecutor-detail-stats').innerHTML = `
             <div class="detail-stat">
@@ -290,6 +293,10 @@ const App = {
             <div class="detail-stat">
                 <div class="ds-val alert">${raKnown > 0 ? (rearrestCount / raKnown * 100).toFixed(1) : 0}%</div>
                 <div class="ds-lbl">Rearrest Rate</div>
+            </div>
+            <div class="detail-stat">
+                <div class="ds-val alert">${ftaKnown > 0 ? (ftaYes / ftaKnown * 100).toFixed(1) : 0}%</div>
+                <div class="ds-lbl">Failed to Appear</div>
             </div>
             <div class="detail-stat">
                 <div class="ds-val alert">${raKnown > 0 ? (ra[3] / raKnown * 100).toFixed(1) : 0}%</div>
