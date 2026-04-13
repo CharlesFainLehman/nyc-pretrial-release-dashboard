@@ -176,7 +176,7 @@ header h1 {
 }
 
 .card-grid-dense {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
 /* === Prosecutor Card === */
@@ -272,12 +272,13 @@ header h1 {
 }
 
 .judge-card .jc-stats {
-    display: flex;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem 0.5rem;
 }
 
 .jc-stat .jc-val {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 800;
     line-height: 1.1;
 }
