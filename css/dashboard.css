@@ -287,6 +287,31 @@ td.high-rearrest {
     font-weight: 600;
 }
 
+/* === Detail Header (prosecutor drill-down) === */
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.back-btn {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: white;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: var(--accent-light);
+}
+
 /* === Judge Comparison Card === */
 .judge-compare {
     background: var(--surface);

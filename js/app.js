@@ -1,14 +1,19 @@
 /**
  * Main application controller - MI-style simplified dashboard.
+ * Two parallel tabs: By Prosecutor and By Judge.
  */
 
 const App = {
-    activeTab: 'overview',
+    activeTab: 'prosecutor',
     judgeLoaded: false,
-    _judgeSortCol: 'rearrest',
-    _judgeSortAsc: false,
+    selectedCountyIdx: null,
+
+    _proseSortCol: 'rearrest',
+    _proseSortAsc: false,
     _crimeSortCol: 'rearrest',
     _crimeSortAsc: false,
+    _judgeSortCol: 'rearrest',
+    _judgeSortAsc: false,
     selectedJudgeIdx: null,
 
     async init() {
@@ -20,13 +25,23 @@ const App = {
             btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
         });
 
+        // Prosecutor table sorting
+        document.querySelectorAll('#prosecutor-table th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (this._proseSortCol === col) this._proseSortAsc = !this._proseSortAsc;
+                else { this._proseSortCol = col; this._proseSortAsc = col === 'name'; }
+                this.updateProsecutorTable();
+            });
+        });
+
         // Crime table sorting
         document.querySelectorAll('#crime-table th[data-sort]').forEach(th => {
             th.addEventListener('click', () => {
                 const col = th.dataset.sort;
                 if (this._crimeSortCol === col) this._crimeSortAsc = !this._crimeSortAsc;
                 else { this._crimeSortCol = col; this._crimeSortAsc = col === 'name'; }
-                this.updateOverview();
+                this.updateCrimeDetail();
             });
         });
 
@@ -38,6 +53,14 @@ const App = {
                 else { this._judgeSortCol = col; this._judgeSortAsc = col === 'name'; }
                 this.updateJudgeTable();
             });
+        });
+
+        // Back button
+        document.getElementById('prosecutor-back').addEventListener('click', () => {
+            this.selectedCountyIdx = null;
+            document.getElementById('prosecutor-detail').style.display = 'none';
+            // Deselect row
+            document.querySelectorAll('#prosecutor-table tbody tr').forEach(r => r.classList.remove('selected'));
         });
 
         this.update();
@@ -67,11 +90,16 @@ const App = {
 
     update() {
         this.updateHeroStats();
-        this.updateOverview();
+        this.updateProsecutorTable();
+        if (this.selectedCountyIdx !== null) {
+            this.updateCrimeDetail();
+        }
         if (this.activeTab === 'judge' && this.judgeLoaded) {
             this.updateJudgeTable();
         }
     },
+
+    // ─── Hero Stats (always citywide) ───
 
     updateHeroStats() {
         const filters = Filters.getFilters();
@@ -80,12 +108,8 @@ const App = {
         const raKnown = ra[0] + ra[1] + ra[2] + ra[3];
         const rearrestCount = ra[1] + ra[2] + ra[3];
         const vfCount = ra[3];
-
-        // "Released" = ROR + NMR + Bail posted = not remanded, not disposed
-        // release indices: 0=ROR, 1=disposed, 2=NMR, 3=bail, 4=unknown, 5=remanded
         const releasedCount = t.release[0] + t.release[2] + t.release[3];
         const releasedPct = t.total > 0 ? (releasedCount / t.total * 100).toFixed(0) : 0;
-        const rearrestPct = raKnown > 0 ? (rearrestCount / raKnown * 100).toFixed(1) : 0;
         const vfPct = raKnown > 0 ? (vfCount / raKnown * 100).toFixed(1) : 0;
 
         document.getElementById('hero-stats').innerHTML = `
@@ -108,19 +132,108 @@ const App = {
         `;
     },
 
-    updateOverview() {
-        const filters = Filters.getFilters();
+    // ─── Prosecutor Tab ───
+
+    getProsecutorData() {
+        const C = DataStore.C;
+        const year = Filters.getYear();
+        const filters = { year, county: 'all', cat: 'all', sev: 'all' };
+        const rows = DataStore.filterCounty(filters);
+        const counties = DataStore.lookups.counties;
+
+        // Group by county
+        const grouped = new Map();
+        for (const r of rows) {
+            const key = r[C.COUNTY];
+            if (!grouped.has(key)) grouped.set(key, { total: 0, rel: [0,0,0,0,0,0], ra: [0,0,0,0,0] });
+            const g = grouped.get(key);
+            g.total += r[C.TOTAL];
+            for (let i = 0; i < 6; i++) g.rel[i] += r[C.ROR + i];
+            for (let i = 0; i < 5; i++) g.ra[i] += r[C.RA_NONE + i];
+        }
+
+        const result = [];
+        for (const [countyIdx, g] of grouped) {
+            const raKnown = g.ra[0] + g.ra[1] + g.ra[2] + g.ra[3];
+            const rearrestCount = g.ra[1] + g.ra[2] + g.ra[3];
+            const felonyCount = g.ra[2] + g.ra[3];
+            const released = g.rel[0] + g.rel[2] + g.rel[3];
+            result.push({
+                countyIdx,
+                name: Filters.getDaLabel(countyIdx, year),
+                total: g.total,
+                ror: g.total > 0 ? +(g.rel[0] / g.total * 100).toFixed(1) : 0,
+                released: g.total > 0 ? +(released / g.total * 100).toFixed(1) : 0,
+                rearrest: raKnown > 0 ? +(rearrestCount / raKnown * 100).toFixed(1) : 0,
+                felony_ra: raKnown > 0 ? +(felonyCount / raKnown * 100).toFixed(1) : 0,
+                vf_ra: raKnown > 0 ? +(g.ra[3] / raKnown * 100).toFixed(1) : 0,
+            });
+        }
+        return result;
+    },
+
+    updateProsecutorTable() {
+        const data = this.getProsecutorData();
+        const col = this._proseSortCol;
+        const asc = this._proseSortAsc;
+        data.sort((a, b) => {
+            let va = a[col], vb = b[col];
+            if (typeof va === 'string') return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+            return asc ? va - vb : vb - va;
+        });
+
+        document.querySelectorAll('#prosecutor-table th[data-sort]').forEach(th => {
+            const arrow = th.querySelector('.sort-arrow');
+            arrow.textContent = th.dataset.sort === col ? (asc ? ' \u25B2' : ' \u25BC') : '';
+        });
+
+        const tbody = document.querySelector('#prosecutor-table tbody');
+        tbody.innerHTML = data.map(d => `
+            <tr data-county="${d.countyIdx}" class="${d.countyIdx === this.selectedCountyIdx ? 'selected' : ''}">
+                <td>${d.name}</td>
+                <td>${d.total.toLocaleString()}</td>
+                <td>${d.ror.toFixed(1)}</td>
+                <td>${d.released.toFixed(1)}</td>
+                <td class="${d.rearrest >= 25 ? 'high-rearrest' : ''}">${d.rearrest.toFixed(1)}</td>
+                <td class="${d.felony_ra >= 10 ? 'high-rearrest' : ''}">${d.felony_ra.toFixed(1)}</td>
+                <td class="${d.vf_ra >= 5 ? 'high-rearrest' : ''}">${d.vf_ra.toFixed(1)}</td>
+            </tr>
+        `).join('');
+
+        // Click to drill down
+        tbody.querySelectorAll('tr').forEach(tr => {
+            tr.addEventListener('click', () => {
+                const countyIdx = parseInt(tr.dataset.county);
+                this.selectedCountyIdx = countyIdx;
+                tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+                tr.classList.add('selected');
+                this.showProsecutorDetail(countyIdx);
+            });
+        });
+    },
+
+    showProsecutorDetail(countyIdx) {
+        const year = Filters.getYear();
+        const name = Filters.getDaLabel(countyIdx, year);
+        document.getElementById('prosecutor-detail-name').textContent = name;
+        document.getElementById('prosecutor-detail').style.display = 'block';
+        this.updateCrimeDetail();
+    },
+
+    updateCrimeDetail() {
+        if (this.selectedCountyIdx === null) return;
+        const year = Filters.getYear();
+        const filters = { year, county: this.selectedCountyIdx, cat: 'all', sev: 'all' };
         const totals = DataStore.getCountyTotals(filters);
 
         // Release donut
         Charts.renderReleaseSummary('chart-release-summary', totals);
 
-        // Rearrest by crime chart + table
+        // Crime breakdown
         const crimeData = this.getCrimeTableData(filters);
         this.renderCrimeTable(crimeData);
 
-        // Rearrest by crime chart - sorted by rearrest rate descending
-        const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest); // ascending for horizontal bar (top = highest)
+        const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest);
         Charts.renderRearrestByCrime('chart-rearrest-by-crime', {
             labels: sorted.map(d => d.name),
             rearrestRate: sorted.map(d => d.rearrest),
@@ -128,15 +241,12 @@ const App = {
             vfRate: sorted.map(d => d.vf_ra),
         });
 
-        // Note
         const noteEl = document.getElementById('rearrest-note');
         const ra = totals.rearrest;
         const nullCount = ra[4];
-        if (nullCount > 0) {
-            noteEl.textContent = `${nullCount.toLocaleString()} cases with pending outcomes excluded from rearrest calculations.`;
-        } else {
-            noteEl.textContent = '';
-        }
+        noteEl.textContent = nullCount > 0
+            ? `${nullCount.toLocaleString()} cases with pending outcomes excluded from rearrest calculations.`
+            : '';
     },
 
     getCrimeTableData(filters) {
@@ -144,7 +254,6 @@ const App = {
         const rows = DataStore.filterCounty(filters);
         const cats = DataStore.lookups.categories;
 
-        // Group by category
         const grouped = new Map();
         for (const r of rows) {
             const key = r[C.CAT];
@@ -160,7 +269,7 @@ const App = {
             const raKnown = g.ra[0] + g.ra[1] + g.ra[2] + g.ra[3];
             const rearrestCount = g.ra[1] + g.ra[2] + g.ra[3];
             const felonyCount = g.ra[2] + g.ra[3];
-            const released = g.rel[0] + g.rel[2] + g.rel[3]; // ROR + NMR + bail
+            const released = g.rel[0] + g.rel[2] + g.rel[3];
             result.push({
                 name: cats[catIdx],
                 total: g.total,
@@ -183,7 +292,6 @@ const App = {
             return asc ? va - vb : vb - va;
         });
 
-        // Update sort arrows
         document.querySelectorAll('#crime-table th[data-sort]').forEach(th => {
             const arrow = th.querySelector('.sort-arrow');
             arrow.textContent = th.dataset.sort === col ? (asc ? ' \u25B2' : ' \u25BC') : '';
@@ -203,25 +311,26 @@ const App = {
         `).join('');
     },
 
+    // ─── Judge Tab ───
+
     updateJudgeTable() {
         if (!this.judgeLoaded) return;
-        const filters = Filters.getFilters();
+        const year = Filters.getYear();
+        const filters = { year, county: 'all', cat: 'all', sev: 'all' };
         const J = DataStore.J;
         const rows = DataStore.filterJudge({ ...filters, judge: 'all' });
         const judges = DataStore.judgeLookups.judges;
 
-        // Group by judge
         const grouped = DataStore.groupBy(rows, J.JUDGE, J.TOTAL, 22);
         const data = [];
 
         for (const [judgeIdx, m] of grouped) {
             const total = m[0];
-            if (total < 100) continue; // min threshold
+            if (total < 100) continue;
 
             const ror = m[1];
             const nmr = m[3];
             const bail = m[4];
-            const remand = m[6];
             const released = ror + nmr + bail;
             const raKnown = m[7] + m[8] + m[9] + m[10];
             const rearrestCount = m[8] + m[9] + m[10];
@@ -240,7 +349,6 @@ const App = {
             });
         }
 
-        // Sort
         const col = this._judgeSortCol;
         const asc = this._judgeSortAsc;
         data.sort((a, b) => {
@@ -249,18 +357,17 @@ const App = {
             return asc ? va - vb : vb - va;
         });
 
-        // Update sort arrows
         document.querySelectorAll('#judge-table th[data-sort]').forEach(th => {
             const arrow = th.querySelector('.sort-arrow');
             arrow.textContent = th.dataset.sort === col ? (asc ? ' \u25B2' : ' \u25BC') : '';
         });
 
-        // Compute borough averages for comparison
+        // Compute citywide averages
         const allTotals = data.reduce((a, d) => a + d.total, 0);
-        const avgRor = data.length > 0 ? (data.reduce((a, d) => a + d.ror * d.total, 0) / allTotals) : 0;
-        const avgReleased = data.length > 0 ? (data.reduce((a, d) => a + d.released * d.total, 0) / allTotals) : 0;
-        const avgRearrest = data.length > 0 ? (data.reduce((a, d) => a + d.rearrest * d.total, 0) / allTotals) : 0;
-        const avgVf = data.length > 0 ? (data.reduce((a, d) => a + d.vf * d.total, 0) / allTotals) : 0;
+        const avgRor = allTotals > 0 ? (data.reduce((a, d) => a + d.ror * d.total, 0) / allTotals) : 0;
+        const avgReleased = allTotals > 0 ? (data.reduce((a, d) => a + d.released * d.total, 0) / allTotals) : 0;
+        const avgRearrest = allTotals > 0 ? (data.reduce((a, d) => a + d.rearrest * d.total, 0) / allTotals) : 0;
+        const avgVf = allTotals > 0 ? (data.reduce((a, d) => a + d.vf * d.total, 0) / allTotals) : 0;
         this._avgStats = { ror: avgRor, released: avgReleased, rearrest: avgRearrest, vf: avgVf };
 
         const tbody = document.querySelector('#judge-table tbody');
@@ -276,20 +383,17 @@ const App = {
             </tr>
         `).join('');
 
-        // Click to select
         tbody.querySelectorAll('tr').forEach(tr => {
             tr.addEventListener('click', () => {
                 const idx = parseInt(tr.dataset.idx);
                 this.selectedJudgeIdx = idx;
                 const judge = data.find(d => d.idx === idx);
                 if (judge) this.showJudgeComparison(judge);
-                // Highlight row
                 tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
                 tr.classList.add('selected');
             });
         });
 
-        // If a judge was already selected, refresh comparison
         if (this.selectedJudgeIdx !== null) {
             const judge = data.find(d => d.idx === this.selectedJudgeIdx);
             if (judge) this.showJudgeComparison(judge);
@@ -303,26 +407,20 @@ const App = {
         document.getElementById('judge-compare-cases').textContent = `${judge.total.toLocaleString()} cases`;
 
         const avg = this._avgStats;
-        const set = (id, judgeVal, avgVal, higherIsWorse) => {
+        const set = (id, judgeVal, avgVal) => {
             const jEl = document.getElementById(id + '-judge');
             const aEl = document.getElementById(id + '-avg');
             jEl.textContent = judgeVal.toFixed(1) + '%';
             aEl.textContent = avgVal.toFixed(1) + '%';
-            // Color coding: worse = red, better = muted green
             jEl.classList.remove('worse', 'better');
-            if (higherIsWorse) {
-                if (judgeVal > avgVal + 2) jEl.classList.add('worse');
-                else if (judgeVal < avgVal - 2) jEl.classList.add('better');
-            } else {
-                if (judgeVal > avgVal + 2) jEl.classList.add('worse');
-                else if (judgeVal < avgVal - 2) jEl.classList.add('better');
-            }
+            if (judgeVal > avgVal + 2) jEl.classList.add('worse');
+            else if (judgeVal < avgVal - 2) jEl.classList.add('better');
         };
 
-        set('jc-ror', judge.ror, avg.ror, true);
-        set('jc-released', judge.released, avg.released, true);
-        set('jc-rearrest', judge.rearrest, avg.rearrest, true);
-        set('jc-vf', judge.vf, avg.vf, true);
+        set('jc-ror', judge.ror, avg.ror);
+        set('jc-released', judge.released, avg.released);
+        set('jc-rearrest', judge.rearrest, avg.rearrest);
+        set('jc-vf', judge.vf, avg.vf);
     },
 };
 

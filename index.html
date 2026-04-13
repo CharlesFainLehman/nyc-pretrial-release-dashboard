@@ -33,7 +33,7 @@
     <!-- Key Stats -->
     <section class="hero-stats" id="hero-stats"></section>
 
-    <!-- Filters -->
+    <!-- Year Filter -->
     <div class="filter-bar">
         <div class="filter-group">
             <label for="filter-year">Year</label>
@@ -47,57 +47,28 @@
                 <option value="2025">2025</option>
             </select>
         </div>
-        <div class="filter-group">
-            <label for="filter-borough">Prosecutor</label>
-            <select id="filter-borough">
-                <option value="all" selected>All NYC</option>
-            </select>
-        </div>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" data-tab="overview">Release &amp; Rearrest</button>
+        <button class="tab active" data-tab="prosecutor">By Prosecutor</button>
         <button class="tab" data-tab="judge">By Judge</button>
     </div>
 
-    <!-- Overview Tab -->
-    <div id="tab-overview" class="tab-content active">
+    <!-- Prosecutor Tab -->
+    <div id="tab-prosecutor" class="tab-content active">
         <section class="narrative-block">
-            <h2>How Are Defendants Released?</h2>
+            <h2>Release and Rearrest by Prosecutor</h2>
             <p>
-                Under bail reform, the vast majority of defendants are released at arraignment&mdash;most
-                on their own recognizance (ROR), without any conditions. Bail is set in a small
-                fraction of cases, and outright remand is rare.
-            </p>
-            <div class="chart-box">
-                <canvas id="chart-release-summary"></canvas>
-            </div>
-        </section>
-
-        <section class="narrative-block">
-            <h2>What Happens After Release?</h2>
-            <p>
-                Among defendants whose cases have concluded, roughly one in five was rearrested
-                before disposition&mdash;including thousands charged with felonies and violent crimes.
-            </p>
-            <div class="chart-box chart-wide">
-                <canvas id="chart-rearrest-by-crime"></canvas>
-            </div>
-            <p class="chart-note" id="rearrest-note"></p>
-        </section>
-
-        <section class="narrative-block">
-            <h2>Rearrest by Crime Type</h2>
-            <p>
-                The table below shows, for each charge category, how defendants were released
-                and how often they were rearrested&mdash;and for what.
+                Each of New York City's five boroughs has its own elected district attorney.
+                The table below compares how defendants fare under each prosecutor's jurisdiction.
+                Click a row to see the breakdown by charge category.
             </p>
             <div class="table-container">
-                <table id="crime-table">
+                <table id="prosecutor-table">
                     <thead>
                         <tr>
-                            <th data-sort="name">Charge Category <span class="sort-arrow"></span></th>
+                            <th data-sort="name">Prosecutor <span class="sort-arrow"></span></th>
                             <th data-sort="total">Cases <span class="sort-arrow"></span></th>
                             <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
                             <th data-sort="released">Released % <span class="sort-arrow"></span></th>
@@ -110,6 +81,49 @@
                 </table>
             </div>
         </section>
+
+        <!-- Detail panel: appears when a prosecutor is clicked -->
+        <div id="prosecutor-detail" style="display:none;">
+            <section class="narrative-block">
+                <div class="detail-header">
+                    <h2 id="prosecutor-detail-name"></h2>
+                    <button class="back-btn" id="prosecutor-back">Show all prosecutors</button>
+                </div>
+
+                <h3>How Are Defendants Released?</h3>
+                <div class="chart-box">
+                    <canvas id="chart-release-summary"></canvas>
+                </div>
+            </section>
+
+            <section class="narrative-block">
+                <h3>Rearrest Rates by Charge Category</h3>
+                <div class="chart-box chart-wide">
+                    <canvas id="chart-rearrest-by-crime"></canvas>
+                </div>
+                <p class="chart-note" id="rearrest-note"></p>
+            </section>
+
+            <section class="narrative-block">
+                <h3>Detail by Crime Type</h3>
+                <div class="table-container">
+                    <table id="crime-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="name">Charge Category <span class="sort-arrow"></span></th>
+                                <th data-sort="total">Cases <span class="sort-arrow"></span></th>
+                                <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
+                                <th data-sort="released">Released % <span class="sort-arrow"></span></th>
+                                <th data-sort="rearrest">Rearrest % <span class="sort-arrow"></span></th>
+                                <th data-sort="felony_ra">Felony Rearrest % <span class="sort-arrow"></span></th>
+                                <th data-sort="vf_ra">Violent Felony Rearrest % <span class="sort-arrow"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
     </div>
 
     <!-- Judge Tab -->
@@ -119,7 +133,7 @@
             <p>
                 Individual judges vary widely in how often they release defendants and in the
                 rearrest rates of those they release. The table below ranks judges by their
-                rearrest rate. Select a judge to compare their record to the borough average.
+                rearrest rate. Click a row to compare their record to the citywide average.
             </p>
 
             <div class="judge-compare" id="judge-compare" style="display:none;">
