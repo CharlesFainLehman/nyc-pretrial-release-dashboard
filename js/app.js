@@ -11,6 +11,7 @@ const SERIOUS_CRIMES = new Set([
 // Exclude non-person entries from judge data
 const JUDGE_EXCLUDE = new Set([
     'Judge/JHO/Hearing Examiner, Visiting',
+    "Office, Clerk's",
 ]);
 
 const App = {

@@ -14,9 +14,9 @@ const Charts = {
         unknown: '#d0d0d0',
 
         noArrest: '#b0b0b0',
-        misd: '#d4a04a',
-        nvf: '#c0392b',
-        vf: '#7b1a1a',
+        misd: '#6a9bc3',
+        nvf: '#2c5d8f',
+        vf: '#1a3a5c',
     },
 
     destroy(id) {

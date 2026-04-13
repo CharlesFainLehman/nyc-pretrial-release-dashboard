@@ -8,8 +8,8 @@
     --text-muted: #6b6b6b;
     --border: #ddd;
     --accent: #1a3a5c;
-    --red: #c0392b;
-    --red-bg: #fdf2f2;
+    --alert: #2c5d8f;
+    --alert-dark: #1a3a5c;
     --orange: #d4760a;
     --green-muted: #5a8a5a;
     --max-width: 1000px;
@@ -89,7 +89,7 @@ header h1 {
 }
 
 .hero-stat.alert .big-num {
-    color: var(--red);
+    color: var(--alert);
 }
 
 .hero-stat .label {
@@ -225,7 +225,7 @@ header h1 {
 }
 
 .card-stat .card-stat-value.alert {
-    color: var(--red);
+    color: var(--alert);
 }
 
 .card-stat .card-stat-label {
@@ -283,7 +283,7 @@ header h1 {
 }
 
 .jc-stat .jc-val.alert {
-    color: var(--red);
+    color: var(--alert);
 }
 
 .jc-stat .jc-lbl {
@@ -344,7 +344,7 @@ header h1 {
 .compare-judge::before { content: 'Judge: '; font-weight: 400; font-size: 0.7rem; color: var(--text-muted); }
 .compare-avg::before { content: 'Avg: '; font-size: 0.7rem; }
 
-.worse { color: var(--red) !important; }
+.worse { color: var(--alert) !important; }
 .better { color: var(--green-muted) !important; }
 
 /* === Detail Panel === */
@@ -396,7 +396,7 @@ header h1 {
     line-height: 1.1;
 }
 
-.detail-stat .ds-val.alert { color: var(--red); }
+.detail-stat .ds-val.alert { color: var(--alert); }
 
 .detail-stat .ds-lbl {
     font-size: 0.65rem;
