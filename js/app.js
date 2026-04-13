@@ -81,9 +81,13 @@ const App = {
         const ra = t.rearrest;
         const raKnown = ra[0] + ra[1] + ra[2] + ra[3];
         const rearrestCount = ra[1] + ra[2] + ra[3];
+        const C = DataStore.C;
+        const fta = DataStore.sumRows(DataStore.filterCounty(Filters.getFilters()), C.FTA_NO, 2);
+        const ftaKnown = fta[0] + fta[1];
+        const ftaPct = ftaKnown > 0 ? (fta[1] / ftaKnown * 100).toFixed(1) : 0;
+
         const releasedCount = t.release[0] + t.release[2] + t.release[3];
         const releasedPct = t.total > 0 ? (releasedCount / t.total * 100).toFixed(0) : 0;
-        const rearrestPct = raKnown > 0 ? (rearrestCount / raKnown * 100).toFixed(1) : 0;
         const vfPct = raKnown > 0 ? (ra[3] / raKnown * 100).toFixed(1) : 0;
 
         document.getElementById('hero-stats').innerHTML = `
@@ -98,6 +102,10 @@ const App = {
             <div class="hero-stat alert">
                 <div class="big-num">${rearrestCount.toLocaleString()}</div>
                 <div class="label">Rearrested</div>
+            </div>
+            <div class="hero-stat alert">
+                <div class="big-num">${ftaPct}%</div>
+                <div class="label">Failed to Appear</div>
             </div>
             <div class="hero-stat alert">
                 <div class="big-num">${vfPct}%</div>
@@ -127,11 +135,13 @@ const App = {
             } else {
                 key = String(countyIdx);
             }
-            if (!grouped.has(key)) grouped.set(key, { total: 0, rel: [0,0,0,0,0,0], ra: [0,0,0,0,0] });
+            if (!grouped.has(key)) grouped.set(key, { total: 0, rel: [0,0,0,0,0,0], ra: [0,0,0,0,0], fta: [0,0] });
             const g = grouped.get(key);
             g.total += r[C.TOTAL];
             for (let i = 0; i < 6; i++) g.rel[i] += r[C.ROR + i];
             for (let i = 0; i < 5; i++) g.ra[i] += r[C.RA_NONE + i];
+            g.fta[0] += r[C.FTA_NO];
+            g.fta[1] += r[C.FTA_YES];
         }
 
         const cards = [];
@@ -159,6 +169,7 @@ const App = {
                 yearLabel = null;
             }
 
+            const ftaKnown = g.fta[0] + g.fta[1];
             cards.push({
                 key,
                 idx: countyIdx,
@@ -170,6 +181,7 @@ const App = {
                 rorPct: g.total > 0 ? +(g.rel[0] / g.total * 100).toFixed(1) : 0,
                 rearrestPct: raKnown > 0 ? +(rearrestCount / raKnown * 100).toFixed(1) : 0,
                 vfPct: raKnown > 0 ? +(g.ra[3] / raKnown * 100).toFixed(1) : 0,
+                ftaPct: ftaKnown > 0 ? +(g.fta[1] / ftaKnown * 100).toFixed(1) : 0,
             });
         }
 
@@ -193,6 +205,10 @@ const App = {
                     <div class="card-stat">
                         <div class="card-stat-value">${c.rorPct}%</div>
                         <div class="card-stat-label">ROR Rate</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="card-stat-value alert">${c.ftaPct}%</div>
+                        <div class="card-stat-label">Failed to Appear</div>
                     </div>
                     <div class="card-stat">
                         <div class="card-stat-value alert">${c.vfPct}%</div>
@@ -339,7 +355,7 @@ const App = {
 
         const rows = DataStore.filterJudge({ year, county, cat: 'all', sev: 'all', judge: 'all' });
         const judges = DataStore.judgeLookups.judges;
-        const grouped = DataStore.groupBy(rows, J.JUDGE, J.TOTAL, 22);
+        const grouped = DataStore.groupBy(rows, J.JUDGE, J.TOTAL, 24);
 
         const data = [];
         for (const [judgeIdx, m] of grouped) {
@@ -353,6 +369,8 @@ const App = {
             const raKnown = m[7] + m[8] + m[9] + m[10];
             const rearrestCount = m[8] + m[9] + m[10];
             const vfCount = m[10];
+            const ftaNo = m[22], ftaYes = m[23]; // offset from TOTAL: fta_no=22, fta_yes=23
+            const ftaKnown = ftaNo + ftaYes;
 
             data.push({
                 idx: judgeIdx,
@@ -362,6 +380,7 @@ const App = {
                 released: total > 0 ? +(released / total * 100).toFixed(1) : 0,
                 rearrest: raKnown > 0 ? +(rearrestCount / raKnown * 100).toFixed(1) : 0,
                 vf: raKnown > 0 ? +(vfCount / raKnown * 100).toFixed(1) : 0,
+                fta: ftaKnown > 0 ? +(ftaYes / ftaKnown * 100).toFixed(1) : 0,
             });
         }
 
@@ -375,6 +394,7 @@ const App = {
             released: allTotals > 0 ? data.reduce((a, d) => a + d.released * d.total, 0) / allTotals : 0,
             rearrest: allTotals > 0 ? data.reduce((a, d) => a + d.rearrest * d.total, 0) / allTotals : 0,
             vf: allTotals > 0 ? data.reduce((a, d) => a + d.vf * d.total, 0) / allTotals : 0,
+            fta: allTotals > 0 ? data.reduce((a, d) => a + d.fta * d.total, 0) / allTotals : 0,
         };
 
         const container = document.getElementById('judge-cards');
@@ -390,6 +410,10 @@ const App = {
                     <div class="jc-stat">
                         <div class="jc-val alert">${d.rearrest}%</div>
                         <div class="jc-lbl">Rearrest</div>
+                    </div>
+                    <div class="jc-stat">
+                        <div class="jc-val alert">${d.fta}%</div>
+                        <div class="jc-lbl">FTA</div>
                     </div>
                     <div class="jc-stat">
                         <div class="jc-val alert">${d.vf}%</div>
@@ -436,6 +460,7 @@ const App = {
         set('jc-ror', judge.ror, avg.ror);
         set('jc-released', judge.released, avg.released);
         set('jc-rearrest', judge.rearrest, avg.rearrest);
+        set('jc-fta', judge.fta, avg.fta);
         set('jc-vf', judge.vf, avg.vf);
 
         // Charts for this judge

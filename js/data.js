@@ -16,7 +16,8 @@ const DataStore = {
         RA_NONE: 11, RA_MISD: 12, RA_NVF: 13, RA_VF: 14, RA_NULL: 15,
         RA180_NONE: 16, RA180_MISD: 17, RA180_NVF: 18, RA180_VF: 19, RA180_NULL: 20,
         RAF_NO: 21, RAF_YES: 22, RAF_NULL: 23,
-        SUP_NO: 24, SUP_YES: 25
+        SUP_NO: 24, SUP_YES: 25,
+        FTA_NO: 26, FTA_YES: 27
     },
 
     /** Column offsets for judge data rows: [year, county, judge, cat, sev, total, ...metrics] */
@@ -26,11 +27,12 @@ const DataStore = {
         RA_NONE: 12, RA_MISD: 13, RA_NVF: 14, RA_VF: 15, RA_NULL: 16,
         RA180_NONE: 17, RA180_MISD: 18, RA180_NVF: 19, RA180_VF: 20, RA180_NULL: 21,
         RAF_NO: 22, RAF_YES: 23, RAF_NULL: 24,
-        SUP_NO: 25, SUP_YES: 26
+        SUP_NO: 25, SUP_YES: 26,
+        FTA_NO: 27, FTA_YES: 28
     },
 
     async loadCountyData() {
-        const res = await fetch('data/county_agg.json');
+        const res = await fetch('data/county_agg.json?v=2');
         const raw = await res.json();
         this.countyRaw = raw.data;
         this.lookups = {
@@ -46,7 +48,7 @@ const DataStore = {
 
     async loadJudgeData() {
         if (this.judgeRaw) return this.judgeLookups;
-        const res = await fetch('data/judge_agg.json');
+        const res = await fetch('data/judge_agg.json?v=2');
         const raw = await res.json();
         this.judgeRaw = raw.data;
         this.judgeLookups = {

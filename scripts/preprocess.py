@@ -113,6 +113,7 @@ def process_files():
                 rearrest_180 = raw.get('rearrest_180', '').strip() if has_rearrest_180 else ''
                 rearrest_firearm = raw.get('rearrest_firearm', '').strip()
                 supervision = raw.get('supervision', '').strip()
+                fta = raw.get('Warrant_Ordered_btw_Arraign_and_Dispo', '').strip()
 
                 rows.append({
                     'year': file_year,
@@ -126,6 +127,7 @@ def process_files():
                     'rearrest_firearm': 1 if rearrest_firearm == '1' else (0 if rearrest_firearm == '0' else -1),
                     'supervision': 1 if supervision == '1' else (0 if supervision == '0' else -1),
                     'has_rearrest_180': has_rearrest_180,
+                    'fta': 1 if fta == 'Y' else (0 if fta == 'N' else -1),
                 })
 
         print(f"  Total: {count:,}, NYC: {nyc_count:,}")
@@ -135,7 +137,7 @@ def process_files():
 
 def aggregate_county(rows, categories, severities):
     """Aggregate by year x county x category x severity."""
-    agg = defaultdict(lambda: [0] * 22)  # total + 6 release + 5 rearrest + 5 rearrest180 + 3 firearm + 2 supervision
+    agg = defaultdict(lambda: [0] * 24)  # total + 6 release + 5 rearrest + 5 rearrest180 + 3 firearm + 2 supervision + 2 fta
 
     cat_idx = {c: i for i, c in enumerate(categories)}
     sev_idx = {s: i for i, s in enumerate(severities)}
@@ -161,13 +163,18 @@ def aggregate_county(rows, categories, severities):
             arr[20] += 1
         elif r['supervision'] == 1:
             arr[21] += 1
+        # fta: 0=no, 1=yes
+        if r['fta'] == 0:
+            arr[22] += 1
+        elif r['fta'] == 1:
+            arr[23] += 1
 
     return agg, county_list
 
 
 def aggregate_judge(rows, categories, severities, judges):
     """Aggregate by year x county x judge x category x severity."""
-    agg = defaultdict(lambda: [0] * 22)
+    agg = defaultdict(lambda: [0] * 24)
 
     cat_idx = {c: i for i, c in enumerate(categories)}
     sev_idx = {s: i for i, s in enumerate(severities)}
@@ -194,6 +201,10 @@ def aggregate_judge(rows, categories, severities, judges):
             arr[20] += 1
         elif r['supervision'] == 1:
             arr[21] += 1
+        if r['fta'] == 0:
+            arr[22] += 1
+        elif r['fta'] == 1:
+            arr[23] += 1
 
     return agg, county_list
 
@@ -206,7 +217,8 @@ def build_json(agg, county_list, categories, severities, judges=None):
         'ra_none', 'ra_misd', 'ra_nvf', 'ra_vf', 'ra_null',
         'ra180_none', 'ra180_misd', 'ra180_nvf', 'ra180_vf', 'ra180_null',
         'raf_no', 'raf_yes', 'raf_null',
-        'sup_no', 'sup_yes'
+        'sup_no', 'sup_yes',
+        'fta_no', 'fta_yes'
     ]
 
     if judges is not None:
