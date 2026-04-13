@@ -56,6 +56,17 @@
     <div id="tab-judge" class="tab-content">
         <div id="judge-loading" class="loading" style="display:none;">Loading judge data...</div>
         <div id="judge-cards-wrap" style="display:none;">
+            <div class="judge-filters">
+                <select id="judge-borough">
+                    <option value="all" selected>All Boroughs</option>
+                    <option value="0">Bronx</option>
+                    <option value="1">Brooklyn</option>
+                    <option value="2">Manhattan</option>
+                    <option value="3">Queens</option>
+                    <option value="4">Staten Island</option>
+                </select>
+                <input type="text" id="judge-search" placeholder="Search judges...">
+            </div>
             <div class="judge-compare" id="judge-compare" style="display:none;">
                 <div class="compare-name" id="judge-compare-name"></div>
                 <div class="compare-cases" id="judge-compare-cases"></div>

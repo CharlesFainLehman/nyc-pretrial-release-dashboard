@@ -139,6 +139,35 @@ header h1 {
 }
 .tab-content.active { display: block; }
 
+/* === Judge Filters === */
+.judge-filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.judge-filters select,
+.judge-filters input {
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: white;
+}
+
+.judge-filters input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.judge-filters select:focus,
+.judge-filters input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
 /* === Card Grid === */
 .card-grid {
     display: grid;

@@ -8,6 +8,11 @@ const SERIOUS_CRIMES = new Set([
     'Homicide Related', 'Rape', 'Drug', 'Larceny', 'Other Sex Offense',
 ]);
 
+// Exclude non-person entries from judge data
+const JUDGE_EXCLUDE = new Set([
+    'Judge/JHO/Hearing Examiner, Visiting',
+]);
+
 const App = {
     activeTab: 'prosecutor',
     judgeLoaded: false,
@@ -48,6 +53,15 @@ const App = {
         this.judgeLoaded = true;
         document.getElementById('judge-loading').style.display = 'none';
         document.getElementById('judge-cards-wrap').style.display = 'block';
+
+        // Bind borough and search filters
+        document.getElementById('judge-borough').addEventListener('change', () => this.renderJudgeCards());
+        let searchTimeout;
+        document.getElementById('judge-search').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => this.renderJudgeCards(), 200);
+        });
+
         this.renderJudgeCards();
     },
 
@@ -257,14 +271,21 @@ const App = {
         if (!this.judgeLoaded) return;
         const year = Filters.getYear();
         const J = DataStore.J;
-        const rows = DataStore.filterJudge({ year, county: 'all', cat: 'all', sev: 'all', judge: 'all' });
+        const boroughVal = document.getElementById('judge-borough').value;
+        const county = boroughVal === 'all' ? 'all' : parseInt(boroughVal);
+        const searchTerm = (document.getElementById('judge-search').value || '').toLowerCase().trim();
+
+        const rows = DataStore.filterJudge({ year, county, cat: 'all', sev: 'all', judge: 'all' });
         const judges = DataStore.judgeLookups.judges;
         const grouped = DataStore.groupBy(rows, J.JUDGE, J.TOTAL, 22);
 
         const data = [];
         for (const [judgeIdx, m] of grouped) {
+            const name = judges[judgeIdx];
+            if (JUDGE_EXCLUDE.has(name)) continue;
             const total = m[0];
             if (total < 100) continue;
+            if (searchTerm && !name.toLowerCase().includes(searchTerm)) continue;
             const ror = m[1], nmr = m[3], bail = m[4];
             const released = ror + nmr + bail;
             const raKnown = m[7] + m[8] + m[9] + m[10];
@@ -273,7 +294,7 @@ const App = {
 
             data.push({
                 idx: judgeIdx,
-                name: judges[judgeIdx],
+                name,
                 total,
                 ror: total > 0 ? +(ror / total * 100).toFixed(1) : 0,
                 released: total > 0 ? +(released / total * 100).toFixed(1) : 0,
@@ -361,8 +382,10 @@ const App = {
 
     renderJudgeCrimeChart(judgeIdx) {
         const year = Filters.getYear();
+        const boroughVal = document.getElementById('judge-borough').value;
+        const county = boroughVal === 'all' ? 'all' : parseInt(boroughVal);
         const J = DataStore.J;
-        const rows = DataStore.filterJudge({ year, county: 'all', cat: 'all', sev: 'all', judge: judgeIdx });
+        const rows = DataStore.filterJudge({ year, county, cat: 'all', sev: 'all', judge: judgeIdx });
         const cats = DataStore.judgeLookups.categories;
 
         const grouped = new Map();
