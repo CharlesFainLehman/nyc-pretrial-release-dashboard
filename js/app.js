@@ -5,8 +5,7 @@
 // Only show these in the rearrest-by-crime bar chart
 const SERIOUS_CRIMES = new Set([
     'Assault', 'Robbery', 'Burglary', 'Criminal Possession of a Weapon',
-    'Homicide Related', 'Rape', 'Strangulation', 'Drug',
-    'Larceny', 'Other Sex Offense', 'DWI',
+    'Homicide Related', 'Rape', 'Drug', 'Larceny', 'Other Sex Offense',
 ]);
 
 const App = {
