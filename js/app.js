@@ -31,6 +31,7 @@ const App = {
 
         document.getElementById('prosecutor-back').addEventListener('click', () => {
             this.selectedCountyIdx = null;
+            this._selectedProseKey = null;
             document.getElementById('prosecutor-detail').style.display = 'none';
             document.querySelectorAll('.prose-card').forEach(c => c.classList.remove('selected'));
         });
@@ -111,30 +112,58 @@ const App = {
         const year = Filters.getYear();
         const rows = DataStore.filterCounty({ year, county: 'all', cat: 'all', sev: 'all' });
 
+        // For Manhattan (idx 2) with "All Years", split into Vance (2020-2021) and Bragg (2022+)
+        const splitManhattan = (year === 'all');
+        const VANCE_YEARS = new Set([2020, 2021]);
+
+        // Key: countyIdx, or "2-vance" / "2-bragg" for split Manhattan
         const grouped = new Map();
         for (const r of rows) {
-            const k = r[C.COUNTY];
-            if (!grouped.has(k)) grouped.set(k, { total: 0, rel: [0,0,0,0,0,0], ra: [0,0,0,0,0] });
-            const g = grouped.get(k);
+            const countyIdx = r[C.COUNTY];
+            let key;
+            if (splitManhattan && countyIdx === 2) {
+                key = VANCE_YEARS.has(r[C.YEAR]) ? '2-vance' : '2-bragg';
+            } else {
+                key = String(countyIdx);
+            }
+            if (!grouped.has(key)) grouped.set(key, { total: 0, rel: [0,0,0,0,0,0], ra: [0,0,0,0,0] });
+            const g = grouped.get(key);
             g.total += r[C.TOTAL];
             for (let i = 0; i < 6; i++) g.rel[i] += r[C.ROR + i];
             for (let i = 0; i < 5; i++) g.ra[i] += r[C.RA_NONE + i];
         }
 
         const cards = [];
-        for (const [idx, g] of grouped) {
+        for (const [key, g] of grouped) {
             const raKnown = g.ra[0] + g.ra[1] + g.ra[2] + g.ra[3];
             const rearrestCount = g.ra[1] + g.ra[2] + g.ra[3];
             const released = g.rel[0] + g.rel[2] + g.rel[3];
-            const daLabel = Filters.getDaLabel(idx, year);
-            const entry = Filters.DA_MAP[idx];
-            const daName = entry.name || (year === 'all' ? entry.allYears : (entry.byYear[year] || entry.allYears));
-            const borough = entry.borough;
+
+            let daName, borough, countyIdx, yearLabel;
+            if (key === '2-vance') {
+                daName = 'Cyrus Vance Jr.';
+                borough = 'Manhattan';
+                countyIdx = 2;
+                yearLabel = '2020\u20132021';
+            } else if (key === '2-bragg') {
+                daName = 'Alvin Bragg';
+                borough = 'Manhattan';
+                countyIdx = 2;
+                yearLabel = '2022\u20132025';
+            } else {
+                countyIdx = parseInt(key);
+                const entry = Filters.DA_MAP[countyIdx];
+                daName = entry.name || (entry.byYear?.[year] || entry.allYears);
+                borough = entry.borough;
+                yearLabel = null;
+            }
 
             cards.push({
-                idx,
+                key,
+                idx: countyIdx,
                 daName,
                 borough,
+                yearLabel,
                 total: g.total,
                 releasedPct: g.total > 0 ? +(released / g.total * 100).toFixed(1) : 0,
                 rorPct: g.total > 0 ? +(g.rel[0] / g.total * 100).toFixed(1) : 0,
@@ -148,9 +177,9 @@ const App = {
 
         const container = document.getElementById('prosecutor-cards');
         container.innerHTML = cards.map(c => `
-            <div class="prose-card ${c.idx === this.selectedCountyIdx ? 'selected' : ''}" data-county="${c.idx}">
+            <div class="prose-card ${c.key === this._selectedProseKey ? 'selected' : ''}" data-key="${c.key}" data-county="${c.idx}">
                 <div class="card-name">${c.daName}</div>
-                <div class="card-borough">${c.borough} &middot; ${c.total.toLocaleString()} cases</div>
+                <div class="card-borough">${c.borough}${c.yearLabel ? ' \u00B7 ' + c.yearLabel : ''} &middot; ${c.total.toLocaleString()} cases</div>
                 <div class="card-stats">
                     <div class="card-stat">
                         <div class="card-stat-value">${c.releasedPct}%</div>
@@ -174,28 +203,58 @@ const App = {
 
         container.querySelectorAll('.prose-card').forEach(card => {
             card.addEventListener('click', () => {
+                const key = card.dataset.key;
                 const idx = parseInt(card.dataset.county);
                 this.selectedCountyIdx = idx;
+                this._selectedProseKey = key;
                 container.querySelectorAll('.prose-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                this.showDetail(idx);
+                const cardData = cards.find(c => c.key === key);
+                this.showDetail(cardData);
             });
         });
     },
 
+    _selectedProseKey: null,
+
     // ─── Prosecutor Detail ───
 
-    showDetail(countyIdx) {
-        const year = Filters.getYear();
-        document.getElementById('prosecutor-detail-name').textContent = Filters.getDaLabel(countyIdx, year);
+    showDetail(cardData) {
+        document.getElementById('prosecutor-detail-name').textContent =
+            `${cardData.daName} (${cardData.borough}${cardData.yearLabel ? ', ' + cardData.yearLabel : ''})`;
         document.getElementById('prosecutor-detail').style.display = 'block';
         this.renderDetail();
     },
 
     renderDetail() {
         const year = Filters.getYear();
-        const filters = { year, county: this.selectedCountyIdx, cat: 'all', sev: 'all' };
-        const t = DataStore.getCountyTotals(filters);
+        // For split Manhattan, filter to the DA's specific years
+        let yearFilter = year;
+        if (this._selectedProseKey === '2-vance') {
+            yearFilter = 'vance'; // special handling below
+        } else if (this._selectedProseKey === '2-bragg') {
+            yearFilter = 'bragg';
+        }
+
+        // Get filtered rows directly to handle Vance/Bragg year splits
+        const C = DataStore.C;
+        const VANCE_YEARS = new Set([2020, 2021]);
+        let allRows = DataStore.filterCounty({ year: 'all', county: this.selectedCountyIdx, cat: 'all', sev: 'all' });
+        if (yearFilter === 'vance') {
+            allRows = allRows.filter(r => VANCE_YEARS.has(r[C.YEAR]));
+        } else if (yearFilter === 'bragg') {
+            allRows = allRows.filter(r => !VANCE_YEARS.has(r[C.YEAR]));
+        } else if (year !== 'all') {
+            allRows = allRows.filter(r => r[C.YEAR] === year);
+        }
+
+        // Compute totals from filtered rows
+        const t = { total: 0, release: [0,0,0,0,0,0], rearrest: [0,0,0,0,0] };
+        for (const r of allRows) {
+            t.total += r[C.TOTAL];
+            for (let i = 0; i < 6; i++) t.release[i] += r[C.ROR + i];
+            for (let i = 0; i < 5; i++) t.rearrest[i] += r[C.RA_NONE + i];
+        }
         const ra = t.rearrest;
         const raKnown = ra[0] + ra[1] + ra[2] + ra[3];
         const rearrestCount = ra[1] + ra[2] + ra[3];
@@ -222,7 +281,7 @@ const App = {
         `;
 
         // Chart: rearrest by crime (serious offenses only)
-        const crimeData = this.getCrimeData(filters).filter(d => SERIOUS_CRIMES.has(d.name));
+        const crimeData = this.getCrimeDataFromRows(allRows).filter(d => SERIOUS_CRIMES.has(d.name));
         const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest);
         Charts.renderRearrestByCrime('chart-rearrest-by-crime', {
             labels: sorted.map(d => d.name),
@@ -237,9 +296,8 @@ const App = {
             : '';
     },
 
-    getCrimeData(filters) {
+    getCrimeDataFromRows(rows) {
         const C = DataStore.C;
-        const rows = DataStore.filterCounty(filters);
         const cats = DataStore.lookups.categories;
         const grouped = new Map();
         for (const r of rows) {
