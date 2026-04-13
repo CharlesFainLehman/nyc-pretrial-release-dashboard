@@ -2,12 +2,20 @@
  * Main app controller - card-based, minimal-text layout.
  */
 
+// Only show these in the rearrest-by-crime bar chart
+const SERIOUS_CRIMES = new Set([
+    'Assault', 'Robbery', 'Burglary', 'Criminal Possession of a Weapon',
+    'Homicide Related', 'Rape', 'Strangulation', 'Drug',
+    'Larceny', 'Other Sex Offense', 'DWI',
+]);
+
 const App = {
     activeTab: 'prosecutor',
     judgeLoaded: false,
     selectedCountyIdx: null,
     selectedJudgeIdx: null,
     _avgStats: null,
+    _judgeData: null,
 
     async init() {
         const lookups = await DataStore.loadCountyData();
@@ -200,8 +208,8 @@ const App = {
             </div>
         `;
 
-        // Chart: rearrest by crime
-        const crimeData = this.getCrimeData(filters);
+        // Chart: rearrest by crime (serious offenses only)
+        const crimeData = this.getCrimeData(filters).filter(d => SERIOUS_CRIMES.has(d.name));
         const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest);
         Charts.renderRearrestByCrime('chart-rearrest-by-crime', {
             labels: sorted.map(d => d.name),
@@ -347,6 +355,55 @@ const App = {
         set('jc-released', judge.released, avg.released);
         set('jc-rearrest', judge.rearrest, avg.rearrest);
         set('jc-vf', judge.vf, avg.vf);
+
+        // Rearrest by crime chart for this judge
+        this.renderJudgeCrimeChart(judge.idx);
+    },
+
+    renderJudgeCrimeChart(judgeIdx) {
+        const year = Filters.getYear();
+        const J = DataStore.J;
+        const rows = DataStore.filterJudge({ year, county: 'all', cat: 'all', sev: 'all', judge: judgeIdx });
+        const cats = DataStore.judgeLookups.categories;
+
+        const grouped = new Map();
+        for (const r of rows) {
+            const k = r[J.CAT];
+            if (!grouped.has(k)) grouped.set(k, { ra: [0,0,0,0,0] });
+            const g = grouped.get(k);
+            for (let i = 0; i < 5; i++) g.ra[i] += r[J.RA_NONE + i];
+        }
+
+        const crimeData = [];
+        for (const [catIdx, g] of grouped) {
+            const name = cats[catIdx];
+            if (!SERIOUS_CRIMES.has(name)) continue;
+            const raKnown = g.ra[0] + g.ra[1] + g.ra[2] + g.ra[3];
+            const rearrestCount = g.ra[1] + g.ra[2] + g.ra[3];
+            const felonyCount = g.ra[2] + g.ra[3];
+            if (raKnown < 10) continue; // skip tiny samples
+            crimeData.push({
+                name,
+                rearrest: raKnown > 0 ? +(rearrestCount / raKnown * 100).toFixed(1) : 0,
+                felony_ra: raKnown > 0 ? +(felonyCount / raKnown * 100).toFixed(1) : 0,
+                vf_ra: raKnown > 0 ? +(g.ra[3] / raKnown * 100).toFixed(1) : 0,
+            });
+        }
+
+        const chartWrap = document.getElementById('judge-chart-wrap');
+        if (crimeData.length === 0) {
+            chartWrap.style.display = 'none';
+            return;
+        }
+
+        chartWrap.style.display = 'block';
+        const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest);
+        Charts.renderRearrestByCrime('chart-judge-rearrest-by-crime', {
+            labels: sorted.map(d => d.name),
+            rearrestRate: sorted.map(d => d.rearrest),
+            felonyRate: sorted.map(d => d.felony_ra),
+            vfRate: sorted.map(d => d.vf_ra),
+        });
     },
 };
 
