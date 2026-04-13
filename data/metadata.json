@@ -1,0 +1,20 @@
+{
+  "source": "https://ww2.nycourts.gov/pretrial-release-data-33136",
+  "source_name": "NYS Division of Criminal Justice Services (DCJS)",
+  "description": "DCJS Supplemental Pretrial Release Data File, filtered to NYC boroughs",
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "total_cases": 846163,
+  "caveats": [
+    "rearrest_180 data not available for 2020",
+    "2025 contains partial year data",
+    "Superior Court data pre-2022 may be incomplete",
+    "NULL rearrest values indicate cases likely still pending"
+  ]
+}

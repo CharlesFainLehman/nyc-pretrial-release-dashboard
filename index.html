@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Pre-Trial Release Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+    <header>
+        <h1>NYC Pre-Trial Release Dashboard</h1>
+        <p class="subtitle">
+            Arraignment decisions, release conditions, and rearrest outcomes for NYC boroughs (2020&ndash;2025)
+        </p>
+        <p class="source">
+            Source: <a href="https://ww2.nycourts.gov/pretrial-release-data-33136" target="_blank" rel="noopener">
+                NYS Division of Criminal Justice Services (DCJS) &mdash; Supplemental Pretrial Release Data File
+            </a>
+        </p>
+    </header>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label for="filter-year">Year</label>
+            <select id="filter-year">
+                <option value="all" selected>All Years</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filter-borough">Borough</label>
+            <select id="filter-borough">
+                <option value="all" selected>All NYC</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filter-category">Charge Category</label>
+            <select id="filter-category">
+                <option value="all" selected>All Categories</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filter-severity">Severity</label>
+            <select id="filter-severity">
+                <option value="all" selected>All Severities</option>
+                <option value="0">Felony</option>
+                <option value="1">Misdemeanor</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="borough">Borough View</button>
+        <button class="tab" data-tab="judge">Judge View</button>
+    </div>
+
+    <!-- Borough View -->
+    <div id="tab-borough" class="tab-content active">
+        <div class="stats-row" id="stats-cards"></div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2>Release Decisions at Arraignment</h2>
+                <div class="chart-controls">
+                    <button class="toggle-btn active" data-chart="release" data-mode="pct">%</button>
+                    <button class="toggle-btn" data-chart="release" data-mode="count">#</button>
+                </div>
+            </div>
+            <div class="chart-container chart-tall">
+                <canvas id="chart-release"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2>Rearrest Outcomes</h2>
+                <div class="chart-controls">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="toggle-180" /> 180-day window
+                    </label>
+                    <button class="toggle-btn active" data-chart="rearrest" data-mode="pct">%</button>
+                    <button class="toggle-btn" data-chart="rearrest" data-mode="count">#</button>
+                </div>
+            </div>
+            <div class="chart-container chart-tall">
+                <canvas id="chart-rearrest"></canvas>
+            </div>
+            <p class="chart-note" id="rearrest-note"></p>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2>Rearrest Rate by Release Decision</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="chart-rearrest-by-release"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Judge View -->
+    <div id="tab-judge" class="tab-content">
+        <div class="judge-selector">
+            <label for="filter-judge">Select Judge:</label>
+            <input type="text" id="filter-judge" list="judge-list" placeholder="Type to search...">
+            <datalist id="judge-list"></datalist>
+            <span id="judge-case-count"></span>
+        </div>
+
+        <div id="judge-loading" class="loading" style="display:none;">Loading judge data...</div>
+
+        <div id="judge-charts" style="display:none;">
+            <div class="chart-row">
+                <div class="chart-section half">
+                    <div class="chart-header">
+                        <h2>Release Decisions: Judge vs Borough</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-judge-release"></canvas>
+                    </div>
+                </div>
+                <div class="chart-section half">
+                    <div class="chart-header">
+                        <h2>Rearrest Outcomes: Judge vs Borough</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-judge-rearrest"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h2>All Judges in Selected Borough</h2>
+                    <div class="chart-controls">
+                        <label>Min. cases: <input type="number" id="min-cases" value="30" min="1" max="1000" style="width:60px"></label>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="judge-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="name">Judge <span class="sort-arrow"></span></th>
+                                <th data-sort="total">Cases <span class="sort-arrow"></span></th>
+                                <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
+                                <th data-sort="bail">Bail % <span class="sort-arrow"></span></th>
+                                <th data-sort="nmr">NMR % <span class="sort-arrow"></span></th>
+                                <th data-sort="remand">Remand % <span class="sort-arrow"></span></th>
+                                <th data-sort="rearrest">Rearrest % <span class="sort-arrow"></span></th>
+                                <th data-sort="vf">Violent Felony Rearrest % <span class="sort-arrow"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>
+            Data: <a href="https://ww2.nycourts.gov/pretrial-release-data-33136" target="_blank" rel="noopener">
+                NYS DCJS Supplemental Pretrial Release Data File
+            </a> |
+            Arraignments of adults (18+) arrested on fingerprinted charges in NYC, Jan 2020 &ndash; 2025 (partial).
+        </p>
+        <p class="caveats">
+            Notes: 180-day rearrest data not available for 2020. 2025 data is partial year.
+            NULL rearrest values (cases still pending) are excluded from rate calculations.
+            Superior Court data pre-2022 may be incomplete.
+        </p>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
