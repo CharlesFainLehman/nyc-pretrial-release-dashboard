@@ -3,23 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NYC Pre-Trial Release Dashboard</title>
+    <title>Released and Rearrested: NYC Pretrial Release Under Bail Reform</title>
     <link rel="stylesheet" href="css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
+
     <header>
-        <h1>NYC Pre-Trial Release Dashboard</h1>
-        <p class="subtitle">
-            Arraignment decisions, release conditions, and rearrest outcomes for NYC boroughs (2020&ndash;2025)
-        </p>
-        <p class="source">
-            Source: <a href="https://ww2.nycourts.gov/pretrial-release-data-33136" target="_blank" rel="noopener">
-                NYS Division of Criminal Justice Services (DCJS) &mdash; Supplemental Pretrial Release Data File
-            </a>
-        </p>
+        <div class="header-inner">
+            <h1>Released and Rearrested</h1>
+            <p class="subtitle">Pretrial Release Outcomes in New York City, 2020&ndash;2025</p>
+        </div>
     </header>
 
+    <section class="lede">
+        <p>
+            New York's 2020 bail reform sharply limited judges' ability to set bail or detain
+            defendants before trial. The law bars judges from considering whether a defendant
+            poses a danger to the public&mdash;making New York the only state with such a restriction.
+        </p>
+        <p>
+            The data below, drawn from the state's own
+            <a href="https://ww2.nycourts.gov/pretrial-release-data-33136" target="_blank" rel="noopener">DCJS Supplemental Pretrial Release Data File</a>,
+            show what has followed: hundreds of thousands of defendants released at arraignment,
+            and tens of thousands rearrested before their cases were resolved.
+        </p>
+    </section>
+
+    <!-- Key Stats -->
+    <section class="hero-stats" id="hero-stats"></section>
+
+    <!-- Filters -->
     <div class="filter-bar">
         <div class="filter-group">
             <label for="filter-year">Year</label>
@@ -39,141 +53,138 @@
                 <option value="all" selected>All NYC</option>
             </select>
         </div>
-        <div class="filter-group">
-            <label for="filter-category">Charge Category</label>
-            <select id="filter-category">
-                <option value="all" selected>All Categories</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="filter-severity">Severity</label>
-            <select id="filter-severity">
-                <option value="all" selected>All Severities</option>
-                <option value="0">Felony</option>
-                <option value="1">Misdemeanor</option>
-            </select>
-        </div>
     </div>
 
+    <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" data-tab="borough">Borough View</button>
-        <button class="tab" data-tab="judge">Judge View</button>
+        <button class="tab active" data-tab="overview">Release &amp; Rearrest</button>
+        <button class="tab" data-tab="judge">By Judge</button>
     </div>
 
-    <!-- Borough View -->
-    <div id="tab-borough" class="tab-content active">
-        <div class="stats-row" id="stats-cards"></div>
+    <!-- Overview Tab -->
+    <div id="tab-overview" class="tab-content active">
+        <section class="narrative-block">
+            <h2>How Are Defendants Released?</h2>
+            <p>
+                Under bail reform, the vast majority of defendants are released at arraignment&mdash;most
+                on their own recognizance (ROR), without any conditions. Bail is set in a small
+                fraction of cases, and outright remand is rare.
+            </p>
+            <div class="chart-box">
+                <canvas id="chart-release-summary"></canvas>
+            </div>
+        </section>
 
-        <div class="chart-section">
-            <div class="chart-header">
-                <h2>Release Decisions at Arraignment</h2>
-                <div class="chart-controls">
-                    <button class="toggle-btn active" data-chart="release" data-mode="pct">%</button>
-                    <button class="toggle-btn" data-chart="release" data-mode="count">#</button>
-                </div>
-            </div>
-            <div class="chart-container chart-tall">
-                <canvas id="chart-release"></canvas>
-            </div>
-        </div>
-
-        <div class="chart-section">
-            <div class="chart-header">
-                <h2>Rearrest Outcomes</h2>
-                <div class="chart-controls">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="toggle-180" /> 180-day window
-                    </label>
-                    <button class="toggle-btn active" data-chart="rearrest" data-mode="pct">%</button>
-                    <button class="toggle-btn" data-chart="rearrest" data-mode="count">#</button>
-                </div>
-            </div>
-            <div class="chart-container chart-tall">
-                <canvas id="chart-rearrest"></canvas>
+        <section class="narrative-block">
+            <h2>What Happens After Release?</h2>
+            <p>
+                Among defendants whose cases have concluded, roughly one in five was rearrested
+                before disposition&mdash;including thousands charged with felonies and violent crimes.
+            </p>
+            <div class="chart-box chart-wide">
+                <canvas id="chart-rearrest-by-crime"></canvas>
             </div>
             <p class="chart-note" id="rearrest-note"></p>
-        </div>
+        </section>
 
-        <div class="chart-section">
-            <div class="chart-header">
-                <h2>Rearrest Rate by Release Decision</h2>
+        <section class="narrative-block">
+            <h2>Rearrest by Crime Type</h2>
+            <p>
+                The table below shows, for each charge category, how defendants were released
+                and how often they were rearrested&mdash;and for what.
+            </p>
+            <div class="table-container">
+                <table id="crime-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="name">Charge Category <span class="sort-arrow"></span></th>
+                            <th data-sort="total">Cases <span class="sort-arrow"></span></th>
+                            <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
+                            <th data-sort="released">Released % <span class="sort-arrow"></span></th>
+                            <th data-sort="rearrest">Rearrest % <span class="sort-arrow"></span></th>
+                            <th data-sort="felony_ra">Felony Rearrest % <span class="sort-arrow"></span></th>
+                            <th data-sort="vf_ra">Violent Felony Rearrest % <span class="sort-arrow"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-            <div class="chart-container">
-                <canvas id="chart-rearrest-by-release"></canvas>
-            </div>
-        </div>
+        </section>
     </div>
 
-    <!-- Judge View -->
+    <!-- Judge Tab -->
     <div id="tab-judge" class="tab-content">
-        <div class="judge-selector">
-            <label for="filter-judge">Select Judge:</label>
-            <input type="text" id="filter-judge" list="judge-list" placeholder="Type to search...">
-            <datalist id="judge-list"></datalist>
-            <span id="judge-case-count"></span>
-        </div>
+        <section class="narrative-block">
+            <h2>Release and Rearrest by Judge</h2>
+            <p>
+                Individual judges vary widely in how often they release defendants and in the
+                rearrest rates of those they release. The table below ranks judges by their
+                rearrest rate. Select a judge to compare their record to the borough average.
+            </p>
 
-        <div id="judge-loading" class="loading" style="display:none;">Loading judge data...</div>
-
-        <div id="judge-charts" style="display:none;">
-            <div class="chart-row">
-                <div class="chart-section half">
-                    <div class="chart-header">
-                        <h2>Release Decisions: Judge vs Borough</h2>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-judge-release"></canvas>
-                    </div>
+            <div class="judge-compare" id="judge-compare" style="display:none;">
+                <div class="compare-header">
+                    <h3 id="judge-compare-name"></h3>
+                    <span id="judge-compare-cases"></span>
                 </div>
-                <div class="chart-section half">
-                    <div class="chart-header">
-                        <h2>Rearrest Outcomes: Judge vs Borough</h2>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-judge-rearrest"></canvas>
+                <div class="compare-grid">
+                    <div class="compare-card">
+                        <div class="compare-row">
+                            <span class="compare-label">ROR Rate</span>
+                            <span class="compare-judge" id="jc-ror-judge"></span>
+                            <span class="compare-avg" id="jc-ror-avg"></span>
+                        </div>
+                        <div class="compare-row">
+                            <span class="compare-label">Released %</span>
+                            <span class="compare-judge" id="jc-released-judge"></span>
+                            <span class="compare-avg" id="jc-released-avg"></span>
+                        </div>
+                        <div class="compare-row">
+                            <span class="compare-label">Rearrest Rate</span>
+                            <span class="compare-judge" id="jc-rearrest-judge"></span>
+                            <span class="compare-avg" id="jc-rearrest-avg"></span>
+                        </div>
+                        <div class="compare-row">
+                            <span class="compare-label">Violent Felony Rearrest</span>
+                            <span class="compare-judge" id="jc-vf-judge"></span>
+                            <span class="compare-avg" id="jc-vf-avg"></span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="chart-section">
-                <div class="chart-header">
-                    <h2>All Judges in Selected Borough</h2>
-                    <div class="chart-controls">
-                        <label>Min. cases: <input type="number" id="min-cases" value="30" min="1" max="1000" style="width:60px"></label>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table id="judge-table">
-                        <thead>
-                            <tr>
-                                <th data-sort="name">Judge <span class="sort-arrow"></span></th>
-                                <th data-sort="total">Cases <span class="sort-arrow"></span></th>
-                                <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
-                                <th data-sort="bail">Bail % <span class="sort-arrow"></span></th>
-                                <th data-sort="nmr">NMR % <span class="sort-arrow"></span></th>
-                                <th data-sort="remand">Remand % <span class="sort-arrow"></span></th>
-                                <th data-sort="rearrest">Rearrest % <span class="sort-arrow"></span></th>
-                                <th data-sort="vf">Violent Felony Rearrest % <span class="sort-arrow"></span></th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+            <div id="judge-loading" class="loading" style="display:none;">Loading judge data...</div>
+
+            <div class="table-container" id="judge-table-wrap" style="display:none;">
+                <table id="judge-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="name">Judge <span class="sort-arrow"></span></th>
+                            <th data-sort="total">Cases <span class="sort-arrow"></span></th>
+                            <th data-sort="ror">ROR % <span class="sort-arrow"></span></th>
+                            <th data-sort="released">Released % <span class="sort-arrow"></span></th>
+                            <th data-sort="rearrest">Rearrest % <span class="sort-arrow"></span></th>
+                            <th data-sort="felony_ra">Felony Rearrest % <span class="sort-arrow"></span></th>
+                            <th data-sort="vf">Violent Felony Rearrest % <span class="sort-arrow"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-        </div>
+            <p class="chart-note">* Judges with fewer than 100 cases are excluded. Click a row to compare.</p>
+        </section>
     </div>
 
     <footer>
         <p>
             Data: <a href="https://ww2.nycourts.gov/pretrial-release-data-33136" target="_blank" rel="noopener">
-                NYS DCJS Supplemental Pretrial Release Data File
-            </a> |
-            Arraignments of adults (18+) arrested on fingerprinted charges in NYC, Jan 2020 &ndash; 2025 (partial).
+                NYS DCJS Supplemental Pretrial Release Data File</a>.
+            Includes arraignments of adults (18+) arrested on fingerprinted charges in New York City.
         </p>
         <p class="caveats">
-            Notes: 180-day rearrest data not available for 2020. 2025 data is partial year.
-            NULL rearrest values (cases still pending) are excluded from rate calculations.
-            Superior Court data pre-2022 may be incomplete.
+            Rearrest is measured between arraignment and case disposition. Cases with unknown
+            rearrest status (pending cases) are excluded from rearrest rate calculations.
+            2025 data is partial year. 180-day rearrest data unavailable for 2020.
         </p>
     </footer>
 

@@ -1,26 +1,22 @@
 /**
- * Chart creation and update logic using Chart.js.
+ * Simplified chart rendering for the MI-style dashboard.
  */
 
 const Charts = {
     instances: {},
 
     COLORS: {
-        release: {
-            ror: '#22c55e',
-            disposed: '#9ca3af',
-            nmr: '#3b82f6',
-            bail: '#f59e0b',
-            unknown: '#d1d5db',
-            remanded: '#ef4444',
-        },
-        rearrest: {
-            none: '#22c55e',
-            misd: '#facc15',
-            nvf: '#f59e0b',
-            vf: '#ef4444',
-            null_: '#d1d5db',
-        },
+        ror: '#6b9e6b',
+        nmr: '#7fafd4',
+        bail: '#d4a04a',
+        remand: '#8b6b8b',
+        disposed: '#b0b0b0',
+        unknown: '#d0d0d0',
+
+        noArrest: '#b0b0b0',
+        misd: '#d4a04a',
+        nvf: '#c0392b',
+        vf: '#7b1a1a',
     },
 
     destroy(id) {
@@ -30,182 +26,53 @@ const Charts = {
         }
     },
 
-    /** Set canvas parent height based on number of bars for horizontal charts. */
-    sizeContainer(canvasId, numBars, barHeight = 28) {
+    sizeContainer(canvasId, height) {
         const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const height = Math.max(200, numBars * barHeight + 80); // 80 for legend/padding
-        canvas.parentElement.style.height = height + 'px';
+        if (canvas) canvas.parentElement.style.height = height + 'px';
     },
 
     /**
-     * Stacked horizontal bar for release decisions by charge category.
+     * Donut chart: how defendants are released.
      */
-    renderReleaseChart(canvasId, data, mode = 'pct') {
+    renderReleaseSummary(canvasId, totals) {
         this.destroy(canvasId);
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
+        this.sizeContainer(canvasId, 320);
 
-        const { labels, totals, releaseData } = data;
-        this.sizeContainer(canvasId, labels.length);
-        const isPct = mode === 'pct';
+        const r = totals.release;
+        const labels = ['ROR', 'Nonmonetary Release', 'Bail Set', 'Remanded', 'Disposed at Arraign', 'Unknown'];
+        const data = [r[0], r[2], r[3], r[5], r[1], r[4]];
+        const colors = [this.COLORS.ror, this.COLORS.nmr, this.COLORS.bail, this.COLORS.remand, this.COLORS.disposed, this.COLORS.unknown];
 
-        const convert = (arr) => {
-            if (!isPct) return arr;
-            return arr.map((v, i) => totals[i] > 0 ? +(v / totals[i] * 100).toFixed(1) : 0);
-        };
-
-        const datasets = [
-            { label: 'ROR', data: convert(releaseData.ror), backgroundColor: this.COLORS.release.ror },
-            { label: 'Nonmonetary Release', data: convert(releaseData.nmr), backgroundColor: this.COLORS.release.nmr },
-            { label: 'Bail Set', data: convert(releaseData.bail), backgroundColor: this.COLORS.release.bail },
-            { label: 'Remanded', data: convert(releaseData.remanded), backgroundColor: this.COLORS.release.remanded },
-            { label: 'Disposed at Arraign', data: convert(releaseData.disposed), backgroundColor: this.COLORS.release.disposed },
-            { label: 'Unknown', data: convert(releaseData.unknown), backgroundColor: this.COLORS.release.unknown },
-        ];
+        // Calculate released % for center text
+        const released = r[0] + r[2] + r[3]; // ROR + NMR + Bail posted (not bail-set-not-posted)
+        const releasedPct = totals.total > 0 ? (released / totals.total * 100).toFixed(0) : 0;
 
         this.instances[canvasId] = new Chart(ctx, {
-            type: 'bar',
-            data: { labels, datasets },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label(ctx) {
-                                const val = ctx.parsed.x;
-                                if (isPct) return `${ctx.dataset.label}: ${val}%`;
-                                return `${ctx.dataset.label}: ${val.toLocaleString()}`;
-                            },
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        max: isPct ? 100 : undefined,
-                        ticks: {
-                            callback: v => isPct ? v + '%' : v.toLocaleString(),
-                        },
-                    },
-                    y: { stacked: true },
-                },
-            },
-        });
-    },
-
-    /**
-     * Stacked horizontal bar for rearrest outcomes by charge category.
-     */
-    renderRearrestChart(canvasId, data, mode = 'pct') {
-        this.destroy(canvasId);
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return;
-
-        const { labels, data: rd } = data;
-        this.sizeContainer(canvasId, labels.length);
-        const isPct = mode === 'pct';
-
-        // Exclude NULLs from percentage base
-        const known = labels.map((_, i) => rd.none[i] + rd.misd[i] + rd.nvf[i] + rd.vf[i]);
-
-        const convert = (arr) => {
-            if (!isPct) return arr;
-            return arr.map((v, i) => known[i] > 0 ? +(v / known[i] * 100).toFixed(1) : 0);
-        };
-
-        const datasets = [
-            { label: 'No Rearrest', data: convert(rd.none), backgroundColor: this.COLORS.rearrest.none },
-            { label: 'Misdemeanor Rearrest', data: convert(rd.misd), backgroundColor: this.COLORS.rearrest.misd },
-            { label: 'Non-Violent Felony Rearrest', data: convert(rd.nvf), backgroundColor: this.COLORS.rearrest.nvf },
-            { label: 'Violent Felony Rearrest', data: convert(rd.vf), backgroundColor: this.COLORS.rearrest.vf },
-        ];
-
-        this.instances[canvasId] = new Chart(ctx, {
-            type: 'bar',
-            data: { labels, datasets },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label(ctx) {
-                                const val = ctx.parsed.x;
-                                if (isPct) return `${ctx.dataset.label}: ${val}%`;
-                                return `${ctx.dataset.label}: ${val.toLocaleString()}`;
-                            },
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        max: isPct ? 100 : undefined,
-                        ticks: {
-                            callback: v => isPct ? v + '%' : v.toLocaleString(),
-                        },
-                    },
-                    y: { stacked: true },
-                },
-            },
-        });
-    },
-
-    /**
-     * Summary rearrest rate bar chart by release decision type.
-     * Since we don't have cross-tab data, show overall rearrest breakdown as a bar.
-     */
-    renderRearrestByRelease(canvasId, totals) {
-        this.destroy(canvasId);
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return;
-        ctx.parentElement.style.height = '300px';
-
-        const ra = totals.rearrest;
-        const known = ra[0] + ra[1] + ra[2] + ra[3]; // excl null
-
-        const labels = ['No Rearrest', 'Misdemeanor', 'Non-Violent Felony', 'Violent Felony'];
-        const values = [ra[0], ra[1], ra[2], ra[3]];
-        const pcts = values.map(v => known > 0 ? +(v / known * 100).toFixed(1) : 0);
-        const colors = [
-            this.COLORS.rearrest.none,
-            this.COLORS.rearrest.misd,
-            this.COLORS.rearrest.nvf,
-            this.COLORS.rearrest.vf,
-        ];
-
-        this.instances[canvasId] = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    data: pcts,
-                    backgroundColor: colors,
-                }],
-            },
+            type: 'doughnut',
+            data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: '#fff' }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '55%',
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 12 },
+                            padding: 12,
+                        },
+                    },
                     tooltip: {
                         callbacks: {
                             label(ctx) {
-                                return `${ctx.parsed.y}% (${values[ctx.dataIndex].toLocaleString()} cases)`;
+                                const v = ctx.parsed;
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? (v / total * 100).toFixed(1) : 0;
+                                return `${ctx.label}: ${v.toLocaleString()} (${pct}%)`;
                             },
                         },
-                    },
-                },
-                scales: {
-                    y: {
-                        ticks: { callback: v => v + '%' },
-                        beginAtZero: true,
                     },
                 },
             },
@@ -213,98 +80,59 @@ const Charts = {
     },
 
     /**
-     * Side-by-side bar comparing judge vs borough average for release decisions.
+     * Horizontal bar: rearrest rate by crime category (sorted by rearrest rate).
      */
-    renderJudgeReleaseComparison(canvasId, comparison) {
+    renderRearrestByCrime(canvasId, crimeData) {
         this.destroy(canvasId);
         const ctx = document.getElementById(canvasId);
-        if (!ctx || !comparison) return;
-        ctx.parentElement.style.height = '350px';
+        if (!ctx) return;
 
-        const labels = ['ROR', 'NMR', 'Bail Set', 'Remanded', 'Disposed', 'Unknown'];
-        const jTotal = comparison.judge.total;
-        const bTotal = comparison.borough.total;
-
-        const jPcts = comparison.judge.release.map(v => jTotal > 0 ? +(v / jTotal * 100).toFixed(1) : 0);
-        const bPcts = comparison.borough.release.map(v => bTotal > 0 ? +(v / bTotal * 100).toFixed(1) : 0);
+        const { labels, rearrestRate, felonyRate, vfRate } = crimeData;
+        this.sizeContainer(canvasId, Math.max(300, labels.length * 32 + 80));
 
         this.instances[canvasId] = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels,
                 datasets: [
-                    { label: 'Selected Judge', data: jPcts, backgroundColor: '#2563eb' },
-                    { label: 'Borough Average', data: bPcts, backgroundColor: '#d1d5db' },
+                    { label: 'Any Rearrest', data: rearrestRate, backgroundColor: this.COLORS.misd },
+                    { label: 'Felony Rearrest', data: felonyRate, backgroundColor: this.COLORS.nvf },
+                    { label: 'Violent Felony Rearrest', data: vfRate, backgroundColor: this.COLORS.vf },
                 ],
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 12 },
+                        },
+                    },
                     tooltip: {
                         callbacks: {
                             label(ctx) {
-                                return `${ctx.dataset.label}: ${ctx.parsed.y}%`;
+                                return `${ctx.dataset.label}: ${ctx.parsed.x}%`;
                             },
                         },
                     },
                 },
                 scales: {
-                    y: {
-                        ticks: { callback: v => v + '%' },
+                    x: {
                         beginAtZero: true,
-                    },
-                },
-            },
-        });
-    },
-
-    /**
-     * Side-by-side bar comparing judge vs borough average for rearrest outcomes.
-     */
-    renderJudgeRearrestComparison(canvasId, comparison) {
-        this.destroy(canvasId);
-        const ctx = document.getElementById(canvasId);
-        if (!ctx || !comparison) return;
-        ctx.parentElement.style.height = '350px';
-
-        const labels = ['No Rearrest', 'Misdemeanor', 'Non-Violent Felony', 'Violent Felony'];
-
-        const jRa = comparison.judge.rearrest;
-        const bRa = comparison.borough.rearrest;
-        const jKnown = jRa[0] + jRa[1] + jRa[2] + jRa[3];
-        const bKnown = bRa[0] + bRa[1] + bRa[2] + bRa[3];
-
-        const jPcts = [jRa[0], jRa[1], jRa[2], jRa[3]].map(v => jKnown > 0 ? +(v / jKnown * 100).toFixed(1) : 0);
-        const bPcts = [bRa[0], bRa[1], bRa[2], bRa[3]].map(v => bKnown > 0 ? +(v / bKnown * 100).toFixed(1) : 0);
-
-        this.instances[canvasId] = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
-                    { label: 'Selected Judge', data: jPcts, backgroundColor: '#2563eb' },
-                    { label: 'Borough Average', data: bPcts, backgroundColor: '#d1d5db' },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label(ctx) {
-                                return `${ctx.dataset.label}: ${ctx.parsed.y}%`;
-                            },
+                        ticks: {
+                            callback: v => v + '%',
+                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
                         },
+                        grid: { color: '#eee' },
                     },
-                },
-                scales: {
                     y: {
-                        ticks: { callback: v => v + '%' },
-                        beginAtZero: true,
+                        ticks: {
+                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 12 },
+                        },
+                        grid: { display: false },
                     },
                 },
             },
