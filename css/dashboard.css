@@ -411,6 +411,17 @@ header h1 {
     grid-template-columns: 1fr 2fr;
     gap: 0.75rem;
     margin-bottom: 0.5rem;
+    align-items: stretch;
+}
+
+.detail-charts .chart-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-charts .chart-box canvas {
+    flex: 1;
+    min-height: 0;
 }
 
 @media (max-width: 600px) {

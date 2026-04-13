@@ -38,16 +38,12 @@ const Charts = {
         this.destroy(canvasId);
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
-        this.sizeContainer(canvasId, 320);
+        // Don't set a fixed height — let CSS grid equalize with sibling chart
 
         const r = totals.release;
         const labels = ['ROR', 'Nonmonetary Release', 'Bail Set', 'Remanded', 'Disposed at Arraign', 'Unknown'];
         const data = [r[0], r[2], r[3], r[5], r[1], r[4]];
         const colors = [this.COLORS.ror, this.COLORS.nmr, this.COLORS.bail, this.COLORS.remand, this.COLORS.disposed, this.COLORS.unknown];
-
-        // Calculate released % for center text
-        const released = r[0] + r[2] + r[3]; // ROR + NMR + Bail posted (not bail-set-not-posted)
-        const releasedPct = totals.total > 0 ? (released / totals.total * 100).toFixed(0) : 0;
 
         this.instances[canvasId] = new Chart(ctx, {
             type: 'doughnut',
@@ -55,13 +51,14 @@ const Charts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '55%',
+                cutout: '50%',
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: 'bottom',
                         labels: {
-                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 12 },
-                            padding: 12,
+                            font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 11 },
+                            padding: 10,
+                            boxWidth: 12,
                         },
                     },
                     tooltip: {
