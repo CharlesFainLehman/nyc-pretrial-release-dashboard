@@ -36,9 +36,6 @@
 
     <!-- Prosecutor Tab -->
     <div id="tab-prosecutor" class="tab-content active">
-        <div class="chart-box" id="release-donut-wrap">
-            <canvas id="chart-release-donut"></canvas>
-        </div>
         <div class="card-grid" id="prosecutor-cards"></div>
 
         <!-- Detail panel -->
@@ -101,8 +98,13 @@
                     </div>
                 </div>
             </div>
-            <div class="chart-box" id="judge-chart-wrap" style="display:none;">
-                <canvas id="chart-judge-rearrest-by-crime"></canvas>
+            <div class="detail-charts" id="judge-detail-charts" style="display:none;">
+                <div class="chart-box">
+                    <canvas id="chart-judge-donut"></canvas>
+                </div>
+                <div class="chart-box">
+                    <canvas id="chart-judge-rearrest-by-crime"></canvas>
+                </div>
             </div>
             <div class="card-grid card-grid-dense" id="judge-cards"></div>
             <p class="note">Judges with fewer than 100 cases excluded. Click a card to compare.</p>

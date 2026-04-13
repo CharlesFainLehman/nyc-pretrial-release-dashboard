@@ -69,15 +69,9 @@ const App = {
 
     update() {
         this.renderHero();
-        this.renderReleaseDonut();
         this.renderProsecutorCards();
         if (this.selectedCountyIdx !== null) this.renderDetail();
         if (this.activeTab === 'judge' && this.judgeLoaded) this.renderJudgeCards();
-    },
-
-    renderReleaseDonut() {
-        const totals = DataStore.getCountyTotals(Filters.getFilters());
-        Charts.renderReleaseSummary('chart-release-donut', totals);
     },
 
     // ─── Hero ───
@@ -444,16 +438,24 @@ const App = {
         set('jc-rearrest', judge.rearrest, avg.rearrest);
         set('jc-vf', judge.vf, avg.vf);
 
-        // Rearrest by crime chart for this judge
-        this.renderJudgeCrimeChart(judge.idx);
+        // Charts for this judge
+        this.renderJudgeDetailCharts(judge.idx);
     },
 
-    renderJudgeCrimeChart(judgeIdx) {
+    renderJudgeDetailCharts(judgeIdx) {
         const year = Filters.getYear();
         const boroughVal = document.getElementById('judge-borough').value;
         const county = boroughVal === 'all' ? 'all' : parseInt(boroughVal);
         const J = DataStore.J;
         const rows = DataStore.filterJudge({ year, county, cat: 'all', sev: 'all', judge: judgeIdx });
+
+        // Release donut for this judge
+        const t = { total: 0, release: [0,0,0,0,0,0] };
+        for (const r of rows) {
+            t.total += r[J.TOTAL];
+            for (let i = 0; i < 6; i++) t.release[i] += r[J.ROR + i];
+        }
+        Charts.renderReleaseSummary('chart-judge-donut', t);
         const cats = DataStore.judgeLookups.categories;
 
         const grouped = new Map();
@@ -480,13 +482,13 @@ const App = {
             });
         }
 
-        const chartWrap = document.getElementById('judge-chart-wrap');
+        const chartWrap = document.getElementById('judge-detail-charts');
         if (crimeData.length === 0) {
             chartWrap.style.display = 'none';
             return;
         }
 
-        chartWrap.style.display = 'block';
+        chartWrap.style.display = 'grid';
         const sorted = [...crimeData].sort((a, b) => a.rearrest - b.rearrest);
         Charts.renderRearrestByCrime('chart-judge-rearrest-by-crime', {
             labels: sorted.map(d => d.name),
